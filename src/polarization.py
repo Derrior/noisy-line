@@ -53,8 +53,9 @@ class InertionPolarization(PolarizationMethod):
         ret = abc2natural((a, b, c))
         return ret
 
-    def __init__(self, inertion=10):
+    def __init__(self, inertion=10, noise_points=10):
         self.inertion = inertion
+        self.noise_points = noise_points
                     
     def __call__(self, cell: Cell) -> Optional[Tuple[int]]:
         points = []
@@ -62,15 +63,15 @@ class InertionPolarization(PolarizationMethod):
             for j, elem in enumerate(row):
                 if elem != 0:
                     points.append((i + cell.up, j + cell.left))
-        if len(points) < 10:
+        if len(points) < self.noise_points:
             return None
         return self.find_points_cloud_inertion(points)
 
 class MaxComponentInertionPolarization(InertionPolarization):
     Shifts = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
     MaxComponents = 5
-    def __init__(self, inertion=10):
-        super(MaxComponentInertionPolarization, self).__init__(inertion)
+    def __init__(self, inertion=10, noise_points=10):
+        super(MaxComponentInertionPolarization, self).__init__(inertion, noise_points)
 
     def find_components(self, cell: Cell) -> List[List[int]]:
         cell_colors = {}
@@ -105,7 +106,7 @@ class MaxComponentInertionPolarization(InertionPolarization):
         x = np.array(list(map(len, components)))
         max_color = np.argmax(x)
         points = components[max_color]
-        if len(points) < 10:
+        if len(points) < self.noise_points:
             return None
         for i in range(len(points)):
             points[i] = (points[i][0] + cell.up, points[i][1] + cell.left)

@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from math import pi
 
 class PeakDetectionMethod:
     def detect_peaks(self, point_list, max_amount):
@@ -40,13 +41,15 @@ class NausWallenstein(PeakDetectionMethod):
         self.outer_windows = {}
         
     def count_statistic(self, observed, expected, window, time, total):
-        binomial_params = int(expected * time / window), window / time
+        if observed <= expected:
+            return 1
+        binomial_params = (total, int(expected * time / window), window / time)
         
         binomial_sums = self.binomial_sums.get(
                             binomial_params,
                             None)
         if binomial_sums == None:
-            binomial_sums = [self.binomial(i, *binomial_params) for i in range(0, total + 1)]
+            binomial_sums = [self.binomial(i, *binomial_params[1:]) for i in range(0, total + 1)]
             for i in range(total, 0, -1):
                 binomial_sums[i - 1] += binomial_sums[i]
             binomial_sums.append(0)
@@ -55,8 +58,11 @@ class NausWallenstein(PeakDetectionMethod):
             print("wrong")
         elif observed == total:
             print("total")
-        return ((observed - expected) * (time / window) + 1) * self.binomial(observed, *binomial_params) + \
+        ret = ((observed - expected) * (time / window) + 1) * self.binomial(observed, *binomial_params[1:]) + \
             2 * binomial_sums[observed + 1]
+        if ret < 0:
+            print(ret)
+        return ret
     
     def window_search(self, point_list, time, key, functor, window=None):
         points_sorted = sorted(point_list, key=key)
@@ -69,33 +75,26 @@ class NausWallenstein(PeakDetectionMethod):
             while end < len(points_sorted) and key(points_sorted[end]) - key(points_sorted[begin]) <= window:
                 end += 1
             observed = end - begin
-            if observed > expected:
-                functor(points_sorted[begin:end],
-                    sum(map(key, points_sorted[begin:end])) / (end - begin), 
-                    window, time, len(points_sorted))
-
+            center = sum(map(key, points_sorted[begin:end])) / (end - begin)
+            functor(points_sorted[begin:end], center,
+                window, time, len(points_sorted))
             if end != len(points_sorted):
                 while begin < len(points_sorted) and key(points_sorted[end]) - key(points_sorted[begin]) > window:  
                     begin += 1
     
     def add_new_statistic(self, y_center, points, x_center, w, T, N):
         stat = self.count_statistic(len(points), N * w / T, w, T, N)
-        if -0.03 < y_center < 0.03:
-            print(stat, x_center)
         if stat < self.alpha:
             self.result[(x_center, y_center)] = stat
     
     def inner_search(self, point_list, center, w, T, N):
+        observed = len(point_list)
+        expected = N * w / T
         stat = self.count_statistic(len(point_list), N * w / T, w, T, N)
+
+        self.outer_windows[center] = (len(point_list), stat)
         if stat > self.alpha:
             return
-        x, y = [], []
-        for i in point_list:
-            x.append(i[0])
-            y.append(i[1])
-        plt.scatter(x, y)
-        plt.show()
-        self.outer_windows[center] = ((len(point_list), N * w / T))
         x_key = lambda x: x[0]
         functor = lambda *x: self.add_new_statistic(center, *x)
         self.window_search(point_list, max(point_list, key=x_key)[0], x_key, functor, window=self.r_window)
@@ -107,7 +106,7 @@ class NausWallenstein(PeakDetectionMethod):
         functor = self.inner_search
         time = y_key(max(point_list, key=y_key))\
                 - y_key(min(point_list, key=y_key))
-        self.window_search(point_list, time, y_key, functor, window=self.phi_window)
+        self.window_search(point_list, 2 * pi, y_key, functor, window=self.phi_window)
         return self.result, self.outer_windows
         """
         points_sorted_x = sorted(point_list, key=lambda x: x[0])
