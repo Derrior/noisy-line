@@ -2,17 +2,21 @@ from polarization import PolarizationMethod
 from cell import Cell
 from math import pi
 
-def grid_from_image(img, grid_size=60):
+def grid_from_image(img, grid_size=60, overlapping_step=0):
     grid = []
-    for i in range(0, img.shape[0], grid_size):
-        grid.append([])
-        for j in range(0, img.shape[1], grid_size):
-            grid[-1].append(Cell(
-                i,
-                min(i + grid_size, img.shape[0]),
-                j,
-                min(j + grid_size, img.shape[1]),
-                img[i:i + grid_size,j: j + grid_size]))
+    steps_iterable = [0]
+    if overlapping_step != 0:
+        steps_iterable = range(0, grid_size, overlapping_step)
+    for step in steps_iterable:
+        for i in range(step, img.shape[0], grid_size):
+            grid.append([])
+            for j in range(step, img.shape[1], grid_size):
+                grid[-1].append(Cell(
+                    i,
+                    min(i + grid_size, img.shape[0]),
+                    j,
+                    min(j + grid_size, img.shape[1]),
+                    img[i:i + grid_size,j: j + grid_size]))
     return grid
 
 def segments_detection(grid, method: PolarizationMethod):

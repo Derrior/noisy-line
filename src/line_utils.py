@@ -3,6 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from cell import Cell
 
+def dist(l1, l2, rescale=1):
+    r = abs(l1[0] - l2[0])
+    phi = abs(l1[1] - l2[1])
+    return hypot(r / rescale, phi)
+
 def abc2natural(line):
     a, b, c = line
     r = -c / hypot(a, b)
@@ -45,3 +50,10 @@ def draw_r_phi(line, intensity=1, cell=None, kwargs={}):
     a, b = cos(line[1]), sin(line[1])
     c = -line[0]
     draw_abc((a, b, c), intensity, cell, kwargs)
+
+def unzip_pairs(array_of_pairs):
+    x, y = [], []
+    for a, b in array_of_pairs:
+        x.append(a)
+        y.append(b)
+    return x, y

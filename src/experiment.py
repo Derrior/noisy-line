@@ -28,12 +28,14 @@ class ExperimentData:
     windows: dict
     # deduplicated lines
     filtered_lines: list
+    peak_detector: PeakDetectionMethod
         
     def __init__(self):
         self.segments = []
         self.peaks = {}
         self.windows = {}
         self.filtered_lines = []
+        self.peak_detector = None
     
     def draw_edges(self):
         plt.imshow(self.edges, cmap='gray')
@@ -44,6 +46,8 @@ class ExperimentData:
             r.append(s[0])
             phi.append(s[1])
         plt.scatter(r, phi, alpha=0.3)
+        #plt.xlim(0, sum(self.img.shape))
+        #plt.ylim(0, 2.1 * pi)
         
     def draw_segments(self):
         plt.imshow(self.edges, cmap='gray')
@@ -53,6 +57,11 @@ class ExperimentData:
                 if is_neighbour(l, segment[0]):
                     color = 'red'
             draw_r_phi(segment[0], cell=segment[1], kwargs={"linestyles" : "solid", "colors" : color})
+
+    def draw_method_visualizing(self):
+        if self.peak_detector != None:
+            self.peak_detector.visualize()
+        
     def draw_windows_dist(self):
         x, y, z = [], [], []
         items = list(self.windows.items())
@@ -86,7 +95,7 @@ class ExperimentData:
             plt.subplot(223)
             self.draw_lines()
             plt.subplot(224)
-            self.draw_windows_dist()
+            self.draw_method_visualizing()
             plt.show()
         else:
             plt.figure(figsize=(20, 20))
@@ -99,21 +108,25 @@ class ExperimentData:
             self.draw_lines()
             plt.show()
             plt.figure(figsize=(20, 20))
-            self.draw_windows_dist()
+            self.draw_method_visualizing()
             plt.show()
     
 
-def run_exp(img, grid_size=20,
+def run_exp(img, grid_size=20, overlapping_step=0, edge=False,
             polarization_method: PolarizationMethod=InertionPolarization(),
             peak_detection_method: PeakDetectionMethod=NausWallenstein(),
             lines_count=10):
     
     exp_data = ExperimentData()
     exp_data.img = img
-    edges = cv.Canny(img, 50, 400)
+    exp_data.peak_detector = peak_detection_method
+    if edge:
+        edges = img
+    else:
+        edges = cv.Canny(img, 50, 400)
     exp_data.edges = edges
     
-    grid = grid_from_image(edges, grid_size)
+    grid = grid_from_image(edges, grid_size, overlapping_step)
     segments = segments_detection(grid, polarization_method)
     exp_data.segments = segments
     
@@ -124,7 +137,7 @@ def run_exp(img, grid_size=20,
     segment_list = list(map(lambda x: x[0], segments))
     segment_list = loop_segment_list(segment_list, pi * 0.1)
 
-    peaks, windows = peak_detection_method.detect_peaks(segment_list, 5)
+    peaks, windows = exp_data.peak_detector.detect_peaks(segment_list, 5)
     exp_data.peaks, exp_data.windows = peaks, windows
 
     by_neighbour_amount = list(peaks.items())
@@ -134,16 +147,18 @@ def run_exp(img, grid_size=20,
     exp_data.filtered_lines = []
     i = 0
     while i < len(by_neighbour_amount) and len(drawn) < lines_count:
+        print("line idx = ", i, "; score = ", by_neighbour_amount[i][0])
         is_drawn = False
         for other in drawn:
             if is_neighbour(by_neighbour_amount[i][0], other):
                 is_drawn = True
+                print(by_neighbour_amount[i][0], other, "are neighbours")
         if is_drawn:
             i += 1
             continue
         exp_data.filtered_lines.append(by_neighbour_amount[i])
         drawn.add(by_neighbour_amount[i][0])
-        i += 1    
+        i += 1
     return exp_data
 
 

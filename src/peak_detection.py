@@ -1,10 +1,11 @@
 import matplotlib.pyplot as plt
-from math import pi
+from math import pi, log
 
 class PeakDetectionMethod:
     def detect_peaks(self, point_list, max_amount):
         pass
-
+    def visualize(self):
+        pass
 
 class NausWallenstein(PeakDetectionMethod):
     
@@ -31,7 +32,7 @@ class NausWallenstein(PeakDetectionMethod):
             
         return result
 
-    def __init__(self, alpha=0.01, r_window=50, phi_window=0.05):
+    def __init__(self, alpha=0.01, r_window=20, phi_window=0.02):
         self.r_window = r_window
         self.phi_window = phi_window
         self.alpha = alpha
@@ -98,6 +99,21 @@ class NausWallenstein(PeakDetectionMethod):
         x_key = lambda x: x[0]
         functor = lambda *x: self.add_new_statistic(center, *x)
         self.window_search(point_list, max(point_list, key=x_key)[0], x_key, functor, window=self.r_window)
+
+    def visualize(self):
+        x, y, z = [], [], []
+        items = list(self.outer_windows.items())
+        items.sort()
+        for k, v in items:
+            if v[1] > 0:
+                x.append(k)
+                y.append(v[0])
+                z.append(-log(v[1]))
+        plt.xlabel("angular line parameter")
+        plt.plot(x, y, label='points in window')
+        plt.plot(x, z, label='statistic log value for window')
+        plt.legend()
+        
         
     def detect_peaks(self, point_list, max_amount):
         self.result = {}
